@@ -161,13 +161,15 @@ class EMail::Client
     wrap_socket_tls if @config.use_smtps?
   end
 
-  private def mail_validate!(mail : EMail::Message) : EMail::Message
+  private def mail_validate!(mail : EMail::Message, override_message_id : Bool) : EMail::Message
     timestamp = Time.local
     mail.date timestamp
-    mail.message_id String.build { |io|
-      io << '<' << timestamp.to_unix_ms << '.' << Process.pid
-      io << '.' << @config.client_name << '@' << helo_domain << '>'
-    }
+    if override_message_id
+      mail.message_id String.build { |io|
+	io << '<' << timestamp.to_unix_ms << '.' << Process.pid
+	io << '.' << @config.client_name << '@' << helo_domain << '>'
+      }
+    end
     mail.validate!
   end
 
@@ -175,10 +177,10 @@ class EMail::Client
   #
   # You can call this only in the block of the `EMail::Client#start` method.
   # This retruns sending result as Bool(`true` for success, `false` for fail).
-  def send(mail : EMail::Message) : Bool
+  def send(mail : EMail::Message, override_message_id = true) : Bool
     raise EMail::Error::ClientError.new("Email client has not been started") unless @started
     @command_history.clear
-    mail = mail_validate!(mail)
+    mail = mail_validate!(mail, override_message_id)
     mail_from = mail.mail_from
     recipients = mail.recipients
     if smtp_rset && smtp_mail(mail_from) && smtp_rcpt(recipients) && smtp_data(mail.data)
