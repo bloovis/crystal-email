@@ -1,5 +1,11 @@
 # EMail for Crystal
 
+*Note*: This is a fork of `arcage/crystal-email`.  I have made one small change:
+added an `override_message_id` parameter to `send`, which prevents it from
+overriding a previously set `message_id`.  I needed this feature to
+get this shard to work correctly with an application that uses
+[notmuch](https://notmuchmail.org/) as a mail store.
+
 [![Build Status](https://travis-ci.org/arcage/crystal-email.svg?branch=master)](https://travis-ci.org/arcage/crystal-email)
 
 Simple email sending library for the [Crystal programming language](https://crystal-lang.org).
