@@ -50,10 +50,13 @@ abstract class EMail::Header
   # Converts header field name to Capitalized-Kebab-Case string.
   #
   # ```
-  # Header.normaliz_name("x-mailer") # => "X-Mailer"
+  # Header.normalize_name("x-mailer") # => "X-Mailer"
   # ```
   def self.normalize_name(name : String) : String
-    name = name.split("-").map(&.capitalize).join("-")
+    name = name.split("-").map do |x|
+      n = x.capitalize
+      n == "Id" ? "ID" : n
+    end.join("-")
     raise EMail::Error::HeaderError.new("#{name.inspect} is invalid as a header field name.") unless name =~ FIELD_NAME
     name
   end
