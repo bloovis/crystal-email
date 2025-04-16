@@ -6,6 +6,14 @@ overriding a previously set `message_id`.  I needed this feature to
 get this shard to work correctly with an application that uses
 [notmuch](https://notmuchmail.org/) as a mail store.
 
+To use my fork of this shard, add these lines to your `shard.yml`:
+
+```yaml
+dependencies:
+  email:
+    github: bloovis/crystal-email
+```
+
 [![Build Status](https://travis-ci.org/arcage/crystal-email.svg?branch=master)](https://travis-ci.org/arcage/crystal-email)
 
 Simple email sending library for the [Crystal programming language](https://crystal-lang.org).
