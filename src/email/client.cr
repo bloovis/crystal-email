@@ -208,16 +208,16 @@ class EMail::Client
   end
 
   def send_smtp2go(mail : EMail::Message, subject : String, message_id : String, body : String) : Bool
-    STDERR.puts "send, key = #{@config.smtp2go_api_key}"
+    #STDERR.puts "send, key = #{@config.smtp2go_api_key}"
     raise EMail::Error::ClientError.new("Email client has not been started") unless @started
     @command_history.clear
     mail = mail_validate!(mail, false)	# false means don't override previously set message-id
+
     mail_from = mail.mail_from
-    recipients = mail.recipients
+    to_list = mail.to_list
+    cc_list = mail.cc_list
+    bcc_list = mail.bcc_list
     attachments = mail.attachments
-
-    STDERR.puts "trying to send via SMTP2GO"
-
     mail_from = mail.mail_from
     recipients = mail.recipients
 
@@ -238,12 +238,40 @@ class EMail::Client
 
 	json.field "to" do
 	  json.array do
-	    recipients.each do |r|
-	      json.string r.addr
+	    to_list.each do |r|
+	      io = IO::Memory.new
+	      r.to_s(io)
+	      json.string io.to_s
+	      #json.string r.addr
 	    end
 	  end
 	end
+
 	json.field "subject", subject
+
+	if cc_list.size > 0
+	  json.field "cc" do
+	    json.array do
+	      cc_list.each do |r|
+	        io = IO::Memory.new
+		r.to_s(io)
+		json.string io.to_s
+	      end
+	    end
+	  end
+	end
+
+	if bcc_list.size > 0
+	  json.field "bcc" do
+	    json.array do
+	      bcc_list.each do |r|
+	        io = IO::Memory.new
+		r.to_s(io)
+		json.string io.to_s
+	      end
+	    end
+	  end
+	end
 
 	json.field "custom_headers" do
 	  json.array do
@@ -272,16 +300,17 @@ class EMail::Client
       end
     end
 
-#   STDERR.puts "JSON request string:", string
+    #STDERR.puts "JSON request string:", string
+    #return false
 
     response = client.post("/v3/email/send", headers, string)
     if response
       json = response.body
-      STDERR.puts "HTTP status code: #{response.status_code}"
-      STDERR.puts "Response: ", json
+      #STDERR.puts "HTTP status code: #{response.status_code}"
+      #STDERR.puts "Response: ", json
       success = response.status_code == 200
     else
-      STDERR.puts "Failure, no response"
+      #STDERR.puts "Failure, no response"
       success = false
     end
 

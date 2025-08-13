@@ -227,6 +227,18 @@ class EMail::Message
     @preset_headers[:to].list + @preset_headers[:cc].list + @preset_headers[:bcc].list
   end
 
+  def to_list
+    @preset_headers[:to].list
+  end
+
+  def cc_list
+    @preset_headers[:cc].list
+  end
+
+  def bcc_list
+    @preset_headers[:bcc].list
+  end
+
   # :nodoc:
   def mail_from
     @envelope_from ||= @preset_headers[:return_path].addr
