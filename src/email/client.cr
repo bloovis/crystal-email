@@ -214,6 +214,8 @@ class EMail::Client
     mail = mail_validate!(mail, false)	# false means don't override previously set message-id
     mail_from = mail.mail_from
     recipients = mail.recipients
+    attachments = mail.attachments
+
     STDERR.puts "trying to send via SMTP2GO"
 
     mail_from = mail.mail_from
@@ -233,6 +235,7 @@ class EMail::Client
     string = JSON.build do |json|
       json.object do
 	json.field "sender", mail_from.addr
+
 	json.field "to" do
 	  json.array do
 	    recipients.each do |r|
@@ -241,6 +244,7 @@ class EMail::Client
 	  end
 	end
 	json.field "subject", subject
+
 	json.field "custom_headers" do
 	  json.array do
 	    json.object do
@@ -249,10 +253,26 @@ class EMail::Client
 	    end
 	  end
 	end
+
 	json.field "text_body", body
+
+	if attachments.size > 0
+	  json.field "attachments" do
+	    json.array do
+	      attachments.each do |a|
+		json.object do
+		  json.field "filename", a.file_name
+		  json.field "mimetype", a.mime_type
+		  json.field "fileblob", a.encoded_data
+		end
+	      end
+	    end
+	  end
+	end
       end
     end
-    STDERR.puts "JSON request string:", string
+
+#   STDERR.puts "JSON request string:", string
 
     response = client.post("/v3/email/send", headers, string)
     if response

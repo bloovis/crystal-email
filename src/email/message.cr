@@ -365,6 +365,10 @@ class EMail::Message
     @attachments << Content::AttachmentFile.new(io, file_id: nil, file_name: file_name, mime_type: mime_type)
   end
 
+  def attachments
+    @attachments
+  end
+
   # Adds message resource file, such as images or stylesheets for the html message, from given file path.
   #
   # Almost same as `#attach` expect this require `cid` argument.

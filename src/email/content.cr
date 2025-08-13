@@ -122,6 +122,18 @@ abstract class EMail::Content
       end
       @data = encode_data(io)
     end
+
+    def mime_type
+      @mime_type
+    end
+
+    def file_name
+      @file_name
+    end
+
+    def encoded_data
+      @data
+    end
   end
 
   class Multipart < Content
