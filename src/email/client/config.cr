@@ -95,6 +95,10 @@ class EMail::Client
     # Port number of SMTP server.
     property port : Int32
 
+    # SMTP2GO api key.  Setting it to a non-blank value causes emails
+    # to be sent via SMTP2GO API instead of SMTP.
+    property smtp2go_api_key = ""
+
     # Client name used in **Message-Id** header.
     getter client_name = EMail::Client::DEFAULT_NAME
 

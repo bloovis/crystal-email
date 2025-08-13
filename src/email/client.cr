@@ -1,5 +1,8 @@
 require "./client/*"
 require "log"
+require "uri"
+require "http"
+require "json"
 
 # SMTP client object.
 #
@@ -101,27 +104,36 @@ class EMail::Client
     end
   end
 
-  # Starts SMTP session.
+  # Starts SMTP session, unless we're going to be using the SMTP2GO API.
   #
   # In the block, the default receiver will be `self`.
   def start
-    ready_to_send
-    status_code, _ = smtp_responce("CONN")
-    if status_code == "220" && smtp_helo && smtp_starttls && smtp_auth
+    STDERR.puts "start, key = #{@config.smtp2go_api_key}"
+    if @config.smtp2go_api_key != ""
       @started = true
       with self yield
       @started = false
     else
-      log_error("Failed in connecting for some reason")
-    end
-    smtp_quit
-  rescue error
-    fatal_error(error)
-  ensure
-    begin
-      close_socket
-    rescue error
-      fatal_error(error)
+      begin
+	ready_to_send
+	status_code, _ = smtp_responce("CONN")
+	if status_code == "220" && smtp_helo && smtp_starttls && smtp_auth
+	  @started = true
+	  with self yield
+	  @started = false
+	else
+	  log_error("Failed in connecting for some reason")
+	end
+	smtp_quit
+      rescue error
+	fatal_error(error)
+      ensure
+	begin
+	  close_socket
+	rescue error
+	  fatal_error(error)
+	end
+      end
     end
   end
 
@@ -176,7 +188,7 @@ class EMail::Client
   # Sends a email message
   #
   # You can call this only in the block of the `EMail::Client#start` method.
-  # This retruns sending result as Bool(`true` for success, `false` for fail).
+  # This returns sending result as Bool(`true` for success, `false` for fail).
   def send(mail : EMail::Message, override_message_id = true) : Bool
     raise EMail::Error::ClientError.new("Email client has not been started") unless @started
     @command_history.clear
@@ -193,6 +205,77 @@ class EMail::Client
       end
       return false
     end
+  end
+
+  def send_smtp2go(mail : EMail::Message, subject : String, message_id : String, body : String) : Bool
+    STDERR.puts "send, key = #{@config.smtp2go_api_key}"
+    raise EMail::Error::ClientError.new("Email client has not been started") unless @started
+    @command_history.clear
+    mail = mail_validate!(mail, false)	# false means don't override previously set message-id
+    mail_from = mail.mail_from
+    recipients = mail.recipients
+    STDERR.puts "trying to send via SMTP2GO"
+
+    mail_from = mail.mail_from
+    recipients = mail.recipients
+
+    # Set up HTTP headers for API.
+    server_url = "https://api.smtp2go.com"
+    uri = URI.parse(server_url)
+    client = HTTP::Client.new(uri)
+    api_key = @config.smtp2go_api_key
+    headers = HTTP::Headers.new
+    headers.add("Content-Type", "application/json")
+    headers.add("X-Smtp2go-Api-Key", api_key)
+    headers.add("accept", "application/json")
+
+    # Construct JSON request containing email details.
+    string = JSON.build do |json|
+      json.object do
+	json.field "sender", mail_from.addr
+	json.field "to" do
+	  json.array do
+	    recipients.each do |r|
+	      json.string r.addr
+	    end
+	  end
+	end
+	json.field "subject", subject
+	json.field "custom_headers" do
+	  json.array do
+	    json.object do
+	      json.field "header", "Message-ID"
+	      json.field "value", message_id
+	    end
+	  end
+	end
+	json.field "text_body", body
+      end
+    end
+    STDERR.puts "JSON request string:", string
+
+    response = client.post("/v3/email/send", headers, string)
+    if response
+      json = response.body
+      STDERR.puts "HTTP status code: #{response.status_code}"
+      STDERR.puts "Response: ", json
+      success = response.status_code == 200
+    else
+      STDERR.puts "Failure, no response"
+      success = false
+    end
+
+    if success
+      log_info("Successfully sent a message via SMTP2GO API from <#{mail_from.addr}> to #{recipients.size} recipient(s)")
+    else
+      log_info "failed to send via SMTP2GO"
+      log_error("Failed sending message via SMTP2GO for some reason")
+      if on_failed = @config.on_failed
+	on_failed.call(mail, @command_history)
+      end
+    end
+    return success
+
   end
 
   private def smtp_command(command : String, parameter : String? = nil)
