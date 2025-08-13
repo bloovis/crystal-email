@@ -108,7 +108,6 @@ class EMail::Client
   #
   # In the block, the default receiver will be `self`.
   def start
-    STDERR.puts "start, key = #{@config.smtp2go_api_key}"
     if @config.smtp2go_api_key != ""
       @started = true
       with self yield
@@ -308,7 +307,6 @@ class EMail::Client
     end
 
     #STDERR.puts "JSON request string:", string
-    #return false
 
     response = client.post("/v3/email/send", headers, string)
     if response
