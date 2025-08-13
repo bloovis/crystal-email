@@ -203,7 +203,7 @@ abstract class EMail::Header
   class Unstructured < Header
     @text : String = ""
 
-    private def body
+    def body
       @text
     end
 

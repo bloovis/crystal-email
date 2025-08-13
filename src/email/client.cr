@@ -207,7 +207,7 @@ class EMail::Client
     end
   end
 
-  def send_smtp2go(mail : EMail::Message, subject : String, message_id : String, body : String) : Bool
+  def send_smtp2go(mail : EMail::Message) : Bool
     #STDERR.puts "send, key = #{@config.smtp2go_api_key}"
     raise EMail::Error::ClientError.new("Email client has not been started") unless @started
     @command_history.clear
@@ -247,7 +247,7 @@ class EMail::Client
 	  end
 	end
 
-	json.field "subject", subject
+	json.field "subject", mail.get_subject
 
 	if cc_list.size > 0
 	  json.field "cc" do
@@ -277,12 +277,19 @@ class EMail::Client
 	  json.array do
 	    json.object do
 	      json.field "header", "Message-ID"
-	      json.field "value", message_id
+	      json.field "value", mail.get_message_id
+	    end
+	    reply_to = mail.get_reply_to
+	    if reply_to
+	      json.object do
+		json.field "header", "Reply-To"
+		json.field "value", reply_to
+	      end
 	    end
 	  end
 	end
 
-	json.field "text_body", body
+	json.field "text_body", mail.message_text_content.data
 
 	if attachments.size > 0
 	  json.field "attachments" do

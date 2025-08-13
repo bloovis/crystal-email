@@ -227,6 +227,7 @@ class EMail::Message
     @preset_headers[:to].list + @preset_headers[:cc].list + @preset_headers[:bcc].list
   end
 
+  # Some getters needed for SMTP2GO API support.
   def to_list
     @preset_headers[:to].list
   end
@@ -237,6 +238,23 @@ class EMail::Message
 
   def bcc_list
     @preset_headers[:bcc].list
+  end
+
+  def get_subject
+    @preset_headers[:subject].body
+  end
+
+  def get_message_id
+    @preset_headers[:message_id].body
+  end
+
+  def get_reply_to : String?
+    hdr = @preset_headers[:reply_to]
+    if hdr.empty?
+      return nil
+    else
+      return hdr.list.join(", ")
+    end
   end
 
   # :nodoc:
@@ -305,7 +323,7 @@ class EMail::Message
     elsif has_html_message?
       @body_html
     else
-      raise EMail::Error::MessageError.new("Message doesn't have both of text and html message.")
+      raise EMail::Error::MessageError.new("Message doesn't have either text or html message.")
     end
   end
 
