@@ -217,7 +217,6 @@ class EMail::Client
     cc_list = mail.cc_list
     bcc_list = mail.bcc_list
     attachments = mail.attachments
-    mail_from = mail.mail_from
     recipients = mail.recipients
 
     # Set up HTTP headers for API.
@@ -241,7 +240,6 @@ class EMail::Client
 	      io = IO::Memory.new
 	      r.to_s(io)
 	      json.string io.to_s
-	      #json.string r.addr
 	    end
 	  end
 	end
@@ -310,20 +308,37 @@ class EMail::Client
 
     response = client.post("/v3/email/send", headers, string)
     if response
-      json = response.body
-      #STDERR.puts "HTTP status code: #{response.status_code}"
-      #STDERR.puts "Response: ", json
       success = response.status_code == 200
+      if success
+	# Check the JSON response for "succeeded" and "failed" counts.
+	obj = JSON.parse(response.body)
+	data = obj["data"]?
+	succeeded = 0
+	failed = 0
+	if data
+	  h = data.as_h
+	  h.keys.each do |k|
+	    if k == "succeeded"
+	      succeeded = h[k].as_i
+	    elsif k == "failed"
+	      failed = h[k].as_i
+	    end
+	  end
+	end
+	STDERR.puts "succeeded = #{succeeded}, failed = #{failed}"
+	success = succeeded > 0 && failed == 0
+      end
     else
-      #STDERR.puts "Failure, no response"
       success = false
     end
 
     if success
       log_info("Successfully sent a message via SMTP2GO API from <#{mail_from.addr}> to #{recipients.size} recipient(s)")
     else
-      log_info "failed to send via SMTP2GO"
-      log_error("Failed sending message via SMTP2GO for some reason")
+      log_error("Failed sending message via SMTP2GO API.")
+      if response
+	log_error("Status code #{response.status_code}, response '#{response.body}'")
+      end
       if on_failed = @config.on_failed
 	on_failed.call(mail, @command_history)
       end
